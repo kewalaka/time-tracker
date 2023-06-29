@@ -20,6 +20,7 @@ current_task = "I'm on a break"
 
 @app.route('/tasks', methods=['GET'])
 def get_tasks() -> Dict[str, Any]:
+    global tasks
     tasks_file_path = os.path.join(os.path.dirname(__file__), '..', 'data', f'tasks{datetime.now().strftime("%y%m%d")}.json')
     if os.path.exists(tasks_file_path):
         with open(tasks_file_path, 'r') as f:
@@ -34,6 +35,11 @@ def get_tasks() -> Dict[str, Any]:
             }
         with open(tasks_file_path, 'w') as f:
             json.dump(tasks, f)
+    for task_name in tasks:
+        tasks[task_name]['active'] = False
+        tasks[task_name]['start_time'] = 0
+    write_tasks_to_file(tasks)
+    print("Current tasks on load:", tasks)
     return tasks
 
 @app.route('/tasks', methods=['POST'])
@@ -59,15 +65,19 @@ def create_task() -> Dict[str, Any]:
 @app.route('/tasks/<task_name>/start', methods=['POST'])
 def start_task(task_name: str) -> Dict[str, Any]:
     global current_task
+    print("Current task that is active:", current_task)
+    print("List of tasks when when /start begins:", tasks)
     if task_name not in tasks:
-        return make_response(jsonify({'error': 'Task not found'}), 404) # type: ignore
-    if current_task != task_name:
-        if current_task is not None and tasks[current_task]["active"]:
-            tasks[current_task]["time"] += time.time() - tasks[current_task]["start_time"]
-    current_task = task_name
-    tasks[current_task] = tasks.get(current_task, {})
+        return make_response(jsonify({'error': 'Task not found'}), 404)
+    if current_task is not None and tasks[current_task]["active"]:
+        tasks[current_task]["time"] += time.time() - tasks[current_task]["start_time"]
+    if current_task is None:
+        current_task = task_name
+    else:
+        current_task = task_name if current_task != task_name else current_task
     tasks[current_task]["start_time"] = time.time()
     tasks[current_task]["active"] = True
+    print("List of tasks when when /start ends:", tasks)
     write_tasks_to_file(tasks)
     return tasks[current_task]
 
@@ -77,7 +87,7 @@ def start_task(task_name: str) -> Dict[str, Any]:
 def stop_task(task_name: str) -> Dict[str, Any]:
     global current_task
     if task_name not in tasks:
-        return make_response(jsonify({'error': 'Task not found'}), 404)
+        return make_response(jsonify({'error': 'Task not found'}), 404) # type: ignore
     if current_task == task_name:
         if tasks[current_task]["start_time"] is not None:
             elapsed_time = time.time() - tasks[current_task]["start_time"]
