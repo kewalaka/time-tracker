@@ -1,4 +1,28 @@
 var activeTask = null;
+var intervalId = null;
+
+$(function () {
+  // Get tasks from backend
+  $.ajax({
+    url: 'http://127.0.0.1:5000/tasks',
+    type: 'GET',
+    success: function (data) {
+      // Populate task list
+      var taskList = $('#task-list');
+      for (var taskName in data) {
+        var taskItem = $('<div class="task-item">')
+          .text(taskName)
+          .click(function () {
+            switchTask($(this).text());
+          });
+        if (data[taskName].active) {
+          taskItem.addClass('active');
+        }
+        taskList.append(taskItem);
+      }
+    }
+  });
+});
 
 // Create new task
 $('#new-task-form').submit(function (event) {
@@ -30,18 +54,25 @@ $('.task-item').click(function () {
   var taskName = $(this).text();
   $('.task-item').removeClass('active');
   $(this).addClass('active');
+  clearInterval(intervalId);
   $.ajax({
-    url: 'http://127.0.0.1:5000/tasks/' + taskName + '/time',
-    type: 'PUT',
-    contentType: 'application/json',
-    data: JSON.stringify({ time: Date.now() })
+    url: 'http://127.0.0.1:5000/tasks/' + taskName + '/start',
+    type: 'POST'
   });
+  activeTask = taskName;
+  var startTime = Date.now();
+  intervalId = setInterval(function () {
+    var elapsedTime = Date.now() - startTime;
+    var hours = Math.floor(elapsedTime / 3600000);
+    var minutes = Math.floor((elapsedTime % 3600000) / 60000);
+    var timeString = hours + 'h ' + minutes + 'm';
+    $('.task-item.active').find('.task-time').text(timeString);
+  }, 60000);
 });
 
 // Switch to task
 function switchTask(taskName) {
   if (activeTask !== null) {
-    $('.task-item').removeClass('active');
     clearInterval(intervalId);
     $.ajax({
       url: 'http://127.0.0.1:5000/tasks/' + activeTask + '/stop',
@@ -49,7 +80,16 @@ function switchTask(taskName) {
     });
   }
   activeTask = taskName;
+  $('.task-item').removeClass('active');
   $('.task-item:contains(' + taskName + ')').addClass('active');
+  var startTime = Date.now();
+  intervalId = setInterval(function () {
+    var elapsedTime = Date.now() - startTime;
+    var hours = Math.floor(elapsedTime / 3600000);
+    var minutes = Math.floor((elapsedTime % 3600000) / 60000);
+    var timeString = hours + 'h ' + minutes + 'm';
+    $('.task-item.active').find('.task-time').text(timeString);
+  }, 60000);
   $.ajax({
     url: 'http://127.0.0.1:5000/tasks/' + taskName + '/start',
     type: 'POST'
