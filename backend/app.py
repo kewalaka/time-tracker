@@ -38,19 +38,21 @@ def get_tasks() -> Dict[str, Any]:
     return tasks
 
 @app.route('/tasks', methods=['POST'])
-def create_task():
-    if request.json is not None:
-        task_name = request.json.get('name')
+def create_task() -> Dict[str, Any]:
+    task_name = request.json.get('name')
+    if task_name:
+        if task_name in tasks:
+            return make_response(jsonify({'error': 'Task already exists'}), 400)
         tasks[task_name] = {
-            "name": task_name,
-            "time": 0,
-            "active": False,
-            "start_time": time.time()
+            'name': task_name,
+            'active': True,
+            'time': 0,
+            'start_time': time.time() # Initialize start_time to current timestamp
         }
         write_tasks_to_file(tasks)
-        return jsonify(tasks[task_name])
+        return make_response(jsonify(tasks[task_name]), 200)
     else:
-        return jsonify({"error": "No JSON payload provided"})
+        return make_response(jsonify({'error': 'No JSON payload provided'}), 400)
 
 @app.route('/tasks/<task_name>/start', methods=['POST'])
 def start_task(task_name: str) -> Dict[str, Any]:
@@ -58,8 +60,9 @@ def start_task(task_name: str) -> Dict[str, Any]:
     if task_name not in tasks:
         return make_response(jsonify({'error': 'Task not found'}), 404)
     if current_task != task_name:
-        if tasks[current_task]["active"]:
+        if current_task is not None and tasks[current_task]["active"]:
             tasks[current_task]["time"] += time.time() - tasks[current_task]["start_time"]
+        tasks[current_task] = tasks.get(current_task, {})
         tasks[current_task]["active"] = False
         current_task = task_name
         tasks[current_task]["start_time"] = time.time()
@@ -73,8 +76,11 @@ def stop_task(task_name: str) -> Dict[str, Any]:
     if task_name not in tasks:
         return make_response(jsonify({'error': 'Task not found'}), 404)
     if current_task == task_name:
-        tasks[current_task]["time"] += time.time() - tasks[current_task]["start_time"]
+        if tasks[current_task]["start_time"] is not None:
+            elapsed_time = time.time() - tasks[current_task]["start_time"]
+            tasks[current_task]["time"] += elapsed_time
         tasks[current_task]["active"] = False
+        tasks[current_task]["start_time"] = None
         current_task = None
         write_tasks_to_file(tasks)
     return tasks[task_name]

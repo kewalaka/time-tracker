@@ -81,7 +81,9 @@ function switchTask(taskName) {
   }
   activeTask = taskName;
   $('.task-item').removeClass('active');
-  $('.task-item:contains(' + taskName + ')').addClass('active');
+  $('.task-item').filter(function () {
+    return $(this).text() === taskName;
+  }).addClass('active');
   var startTime = Date.now();
   intervalId = setInterval(function () {
     var elapsedTime = Date.now() - startTime;
