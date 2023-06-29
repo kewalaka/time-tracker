@@ -34,7 +34,6 @@ def get_tasks() -> Dict[str, Any]:
             }
         with open(tasks_file_path, 'w') as f:
             json.dump(tasks, f)
-    print(tasks)
     return tasks
 
 @app.route('/tasks', methods=['POST'])
@@ -42,7 +41,7 @@ def create_task() -> Dict[str, Any]:
     task_name = request.json.get('name')
     if task_name:
         if task_name in tasks:
-            return make_response(jsonify({'error': 'Task already exists'}), 400)
+            return make_response(jsonify({'error': 'Task already exists'}), 400) # type: ignore
         tasks[task_name] = {
             'name': task_name,
             'active': True,
@@ -50,26 +49,30 @@ def create_task() -> Dict[str, Any]:
             'start_time': time.time() # Initialize start_time to current timestamp
         }
         write_tasks_to_file(tasks)
-        return make_response(jsonify(tasks[task_name]), 200)
+        return make_response(jsonify(tasks[task_name]), 200) # type: ignore
     else:
-        return make_response(jsonify({'error': 'No JSON payload provided'}), 400)
+        return make_response(jsonify({'error': 'No JSON payload provided'}), 400) # type: ignore
 
+# when the a start request is made, the current task is stopped and the start_time is used to calculate the elapsed time
+# the start_time of the new task is set to the current timestamp
+# there is no current task when the application first starts
 @app.route('/tasks/<task_name>/start', methods=['POST'])
 def start_task(task_name: str) -> Dict[str, Any]:
     global current_task
     if task_name not in tasks:
-        return make_response(jsonify({'error': 'Task not found'}), 404)
+        return make_response(jsonify({'error': 'Task not found'}), 404) # type: ignore
     if current_task != task_name:
         if current_task is not None and tasks[current_task]["active"]:
             tasks[current_task]["time"] += time.time() - tasks[current_task]["start_time"]
-        tasks[current_task] = tasks.get(current_task, {})
-        tasks[current_task]["active"] = False
-        current_task = task_name
-        tasks[current_task]["start_time"] = time.time()
-        tasks[current_task]["active"] = True
-        write_tasks_to_file(tasks)
+    current_task = task_name
+    tasks[current_task] = tasks.get(current_task, {})
+    tasks[current_task]["start_time"] = time.time()
+    tasks[current_task]["active"] = True
+    write_tasks_to_file(tasks)
     return tasks[current_task]
 
+# when a stop request is received, the elapsed time is calculated from start_time and added to the total time
+# if start_time is None, the task has not been started yet and the elapsed time is 0
 @app.route('/tasks/<task_name>/stop', methods=['POST'])
 def stop_task(task_name: str) -> Dict[str, Any]:
     global current_task
@@ -82,6 +85,13 @@ def stop_task(task_name: str) -> Dict[str, Any]:
         tasks[current_task]["active"] = False
         tasks[current_task]["start_time"] = None
         current_task = None
+        write_tasks_to_file(tasks)
+    else:
+        if tasks[task_name]["start_time"] is not None:
+            elapsed_time = time.time() - tasks[task_name]["start_time"]
+            tasks[task_name]["time"] += elapsed_time
+        tasks[task_name]["active"] = False
+        tasks[task_name]["start_time"] = None
         write_tasks_to_file(tasks)
     return tasks[task_name]
 
