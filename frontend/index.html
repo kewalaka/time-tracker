@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Timesheet Tracker</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <link rel="stylesheet" href="app.css">
+</head>
+
+<body>
+  <div class="container">
+    <h1>Timesheet Tracker</h1>
+    <form id="new-task-form">
+      <div class="form-group">
+        <label for="task-name">Task Name:</label>
+        <input type="text" class="form-control" id="task-name" required>
+      </div>
+      <button id="create-task-button" type="submit" class="btn btn-primary">Create Task</button>
+    </form>
+    <hr>
+    <div id="task-list"></div>
+  </div>
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>
